@@ -147,7 +147,7 @@ class TDB extends Auth_Controller
 
 		foreach (getData($result) as $key => $row)
 		{
-			$csvRow = array($key + 1, $row->nachname, $row->vorname, $row->gebdatum, '',
+			$csvRow = array($row->person_id, $row->nachname, $row->vorname, $row->gebdatum, '',
 				$row->gebort, $row->geschlecht, $row->staatsangehoerigkeit, $row->anschriftsstaat,
 				$row->gemeinde, $row->plz, '', '');
 
@@ -165,7 +165,7 @@ class TDB extends Auth_Controller
 		$this->_ci->KontoModel->addJoin('bis.tbl_nation a', 'nation = a.nation_code');
 		$this->_ci->KontoModel->addJoin('public.tbl_studiensemester ss', 'tbl_konto.studiensemester_kurzbz = ss.studiensemester_kurzbz');
 		$this->_ci->KontoModel->addJoin('public.tbl_studienjahr sj', 'ss.studienjahr_kurzbz = sj.studienjahr_kurzbz');
-		$this->_ci->KontoModel->addJoin('sync.tbl_tdb_bpks bpks', 'bpks.person_id = tbl_person.person_id', 'LEFT');
+		$this->_ci->KontoModel->addJoin('extension.tbl_tdb_bpks bpks', 'bpks.person_id = tbl_person.person_id', 'LEFT');
 		$this->_ci->KontoModel->addSelect('SPLIT_PART(sj.studienjahr_kurzbz, \'/\', 1 ) as startjahr,
 										CONCAT(20, SPLIT_PART(sj.studienjahr_kurzbz, \'/\', 2 )) as endjahr,
 										matr_nr,
@@ -174,7 +174,8 @@ class TDB extends Auth_Controller
 										tbl_person.*,
 										s.iso3166_1_a3 AS staatsangehoerigkeit,
 										a.iso3166_1_a3 AS anschriftsstaat,
-										tbl_adresse.*, bpks.*');
+										tbl_adresse.*, bpks.*,
+										tbl_person.person_id as person_id');
 		/*
 		 * OR tbl_konto.buchungstyp_kurzbz = 'ZuschussIO'
 		 */
@@ -386,4 +387,3 @@ class TDB extends Auth_Controller
 		if (!$this->_uid) show_error('User authentification failed');
 	}
 }
-

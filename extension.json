@@ -1,6 +1,6 @@
 {
 	"name": "FHC-Core-TDB",
-	"description": "TDB",
+	"description": "Transparenzdatenbank",
 	"version": "1",
 	"license": "GPL",
 	"url": "https://github.com/FH-Complete/FHC-Core-TDB",

@@ -23,5 +23,35 @@ $(document).ready(function() {
 		}
 		window.open(CONTROLLER_URL + '/csvExport?csvExportDate=' + $('#csvExportDate').val());
 	});
+
+	$('#importCSV').submit(function(e){
+
+		e.preventDefault();
+
+		FHC_AjaxClient.ajaxCallPost(
+			CALLED_PATH + "/csvImport",
+			{
+				csvFile: this.uploadfile.files
+			},
+			{
+				successCallback: function (data, textStatus, jqXHR)
+				{
+					if (FHC_AjaxClient.isError(data))
+					{
+						FHC_DialogLib.alertWarning(FHC_AjaxClient.getError(data));
+					}
+
+					if (FHC_AjaxClient.hasData(data))
+					{
+						FHC_DialogLib.alertSuccess(FHC_AjaxClient.getData(data))
+					}
+				},
+				errorCallback: function (jqXHR, textStatus, errorThrown)
+				{
+					FHC_DialogLib.alertError(FHC_PhrasesLib.t("ui", "systemfehler"));
+				}
+			}
+		);
+	});
 });
 

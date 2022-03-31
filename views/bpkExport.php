@@ -78,9 +78,18 @@ $this->load->view(
 					</div>
 				</div>
 				<div class="form-group col-lg-6">
-					<form id="importCSV" method="POST" enctype="multipart/form-data" action="<?php echo site_url('extensions/FHC-Core-TDB/TDB/csvImport'); ?>">
+					<form id="importCSV" method="POST" enctype="multipart/form-data">
 						<div class="col-lg-6">
-							<input class="form-control file" type="file" id="csvFile" name="csvFile"/>
+							<div class="form-control">
+								<?php echo form_upload(array(
+									'name' => 'uploadfile',
+									'accept' => '.csv',
+									'size' => '1',
+									'required' => 'required',
+									'enctype' => "multipart/form-data"
+								)); ?>
+							</div>
+							<a class="pull-right" id="csvFile"></a>
 						</div>
 						<div class="col-lg-4">
 							<button type="submit" class="btn btn-default">Import</button>

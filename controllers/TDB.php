@@ -37,7 +37,7 @@ class TDB extends Auth_Controller
 		$this->_ci->load->library('WidgetLib');
 		$this->_ci->load->library('PhrasesLib');
 		$this->_ci->load->helper('hlp_sancho_helper');
-
+		$this->load->helper('form');
 		$this->_ci->loadPhrases(
 			array(
 				'person',
@@ -105,12 +105,35 @@ class TDB extends Auth_Controller
 	{
 		if (is_uploaded_file($_FILES['csvFile']['tmp_name']))
 		{
-			$handle = fopen ($_FILES['csvFile']['tmp_name'],"r");
+			$handle = fopen ($_FILES['csvFile']['tmp_name'],'r');
 
+			$row = 0;
+			$error = '';
 			while (($data = fgetcsv ($handle, 10000, ";")) !== FALSE)
 			{
-				//var_dump($data);
+				$row++;
+
+				if ($row==1)
+					continue;
+
+				$check = $this->_ci->TDBBPKSModel->loadWhere(array('person_id' => $data[0]));
+
+				if (hasData($check))
+				{
+					$person_id = getData($check)[0]->person_id;
+					$this->_ci->TDBBPKSModel->update(array('person_id' => $person_id), array('vbpk_zp_td' => $data[14], 'vbpk_as' => $data[15]));
+				}
+				else
+				{
+					$error .= 'Person: ' . $data[0] . ' nicht gefunden;';
+				}
 			}
+			fclose($handle);
+
+			if ($error !== '')
+				$this->terminateWithJsonError($error);
+			else
+				$this->outputJsonSuccess('Erfolgreich hochgeladen');
 		}
 	}
 
@@ -125,9 +148,6 @@ class TDB extends Auth_Controller
 
 		foreach (getData($result) as $key => $row)
 		{
-			if (is_null($row->person_id))
-				continue;
-
 			$check = $this->_ci->TDBBPKSModel->loadWhere(array('person_id' => $row->person_id));
 
 			if (!hasData($check))
@@ -304,7 +324,7 @@ class TDB extends Auth_Controller
 				'VorgangsId' => $leistungsstipendium->buchungsnr,
 				'FoerderfallId' => $leistungsstipendium->buchungsnr,
 				'LeistungsangebotID' => '1007202', //1007202 in Prod 1047349 in Test
-				'Foerdergegenstand' => 'F4186Q1006',
+				'Foerdergegenstand' => 'F2840Q1006',
 				'Status' => array(
 					'Datum' => $leistungsstipendium->buchungsdatum,
 					'Status' => 'gewaehrt',

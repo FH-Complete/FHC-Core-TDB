@@ -24,8 +24,8 @@ $(document).ready(function() {
 		window.open(CONTROLLER_URL + '/csvExport?csvExportDate=' + $('#csvExportDate').val());
 	});
 
-	$('#importCSV').submit(function(e){
-
+	$('#importCSV').submit(function(e)
+	{
 		e.preventDefault();
 
 		FHC_AjaxClient.ajaxCallPost(
@@ -53,5 +53,11 @@ $(document).ready(function() {
 			}
 		);
 	});
+
+	$("#datasetActionsTop").append(
+		"<div class='row'>"+
+			"<div class='col-xs-12 text-center'><i class='fa fa-circle text-danger'></i> Keine bPK gefunden </div>"+
+		"</div>"
+	);
 });
 

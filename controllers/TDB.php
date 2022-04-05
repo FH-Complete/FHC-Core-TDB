@@ -5,12 +5,10 @@ class TDB extends Auth_Controller
 {
 
 	private $_ci;
-
 	private $_uid;
-
 	private $uebermittlungsID;
-
 	private $test;
+
 	/**
 	 * Constructor
 	 */
@@ -28,6 +26,7 @@ class TDB extends Auth_Controller
 		$this->_setAuthUID();
 		$this->setControllerId(); // sets the controller id
 
+		$this->_ci->load->config('extensions/FHC-Core-TDB/tdb');
 		$this->_ci->load->model('crm/Konto_model', 'KontoModel');
 		$this->_ci->load->model('organisation/Studiensemester_model', 'StudiensemesterModel');
 		$this->_ci->load->model('extensions/FHC-Core-TDB/TDBExport_model', 'TDBExportModel');
@@ -37,7 +36,7 @@ class TDB extends Auth_Controller
 		$this->_ci->load->library('WidgetLib');
 		$this->_ci->load->library('PhrasesLib');
 		$this->_ci->load->helper('hlp_sancho_helper');
-		$this->load->helper('form');
+		$this->_ci->load->helper('form');
 		$this->_ci->loadPhrases(
 			array(
 				'person',
@@ -239,13 +238,13 @@ class TDB extends Auth_Controller
 		$i = 0;
 		do {
 			$i++;
-			$this->uebermittlungsID = 'UEB-FTHW-TDB-'. date('Y-m-d') . '-' . $i;
+			$this->uebermittlungsID = $this->_ci->config->item('UebermittlungsID') . '-' . date('Y-m-d') . '-' . $i;
 			$check = $this->_ci->TDBExportModel->loadWhere(array('uebermittlung_id' => $this->uebermittlungsID));
 		} while(hasData($check));
 
 		$headerValue = array(
-			'OkzUeb' => 'XZVR-0074476426',
-			'NameUeb' => 'Fachhochschule Technikum Wien',
+			'OkzUeb' => $this->_ci->config->item('Okz'),
+			'NameUeb' => $this->_ci->config->item('Foerdergeber'),
 			'UebermittlungsId' => $this->uebermittlungsID,
 			'TsErstellung' => date('Y-m-d\TH:i:s'),
 			'Test' => $testExport
@@ -320,19 +319,22 @@ class TDB extends Auth_Controller
 					continue;
 			}
 
+			if (is_null($leistungsstipendium->vbpk_zp_td) || is_null($leistungsstipendium->vbpk_as))
+				continue;
+
 			$array[$key]['Foerderfall'] = array(
 				'VorgangsId' => $leistungsstipendium->buchungsnr,
 				'FoerderfallId' => $leistungsstipendium->buchungsnr,
-				'LeistungsangebotID' => '1007202', //1007202 in Prod 1047349 in Test
-				'Foerdergegenstand' => 'F2840Q1006',
+				'LeistungsangebotID' => $this->_ci->config->item('LeistungsangebotID'),
+				'Foerdergegenstand' => $this->_ci->config->item('Foerdergegenstand'),
 				'Status' => array(
 					'Datum' => $leistungsstipendium->buchungsdatum,
-					'Status' => 'gewaehrt',
+					'Status' => $this->_ci->config->item('FoerderfallStatus'),
 					'Betrag' => $leistungsstipendium->betrag
 				),
 				'Foerdergeber' => array(
-					'OkzLst' => 'XZVR-0074476426',
-					'NameLst' => 'Fachhochschule Technikum Wien'
+					'OkzLst' => $this->_ci->config->item('Okz'),
+					'NameLst' => $this->_ci->config->item('Foerdergeber')
 				),
 				'Foerdernehmer' => array(
 					'FoerdernehmerNatPers' => array(
@@ -341,24 +343,24 @@ class TDB extends Auth_Controller
 					)
 				),
 				'Kontaktinfo' => array(
-					'Kontakt' => 'Gerhard Brandstätter'
-					/*'KontaktEmail' => '',
-					'KontaktTel' => ''*/
+					'Kontakt' => $this->_ci->config->item('KontaktName')/*,
+					'KontaktEmail' => $this->_ci->config->item('KontaktEmail'),
+					'KontaktTel' => $this->_ci->config->item('KontaktTel')*/
 				),
 			);
 
 			$array[$key]['Leistungsdaten'] = array(
 				'FoerderfallId' => $leistungsstipendium->buchungsnr,
 				'LeistungsdatenId' => $leistungsstipendium->buchungsnr,
-				'Leistungsbezeichnung' => 'Leistungsstipendium',
+				'Leistungsbezeichnung' => $this->_ci->config->item('Leistungsbezeichnung'),
 				'Betrag' => $leistungsstipendium->betrag,
 				'JahrVon' => $leistungsstipendium->startjahr,
 				'JahrBis' => $leistungsstipendium->endjahr,
 				'DatumAuszahlung' => $leistungsstipendium->buchungsdatum,
 				'Foerdergeber' =>
 					array(
-						'OkzLst' => 'XZVR-0074476426',
-						'NameLst' => 'Fachhochschule Technikum Wien'
+						'OkzLst' => $this->_ci->config->item('Okz'),
+						'NameLst' => $this->_ci->config->item('Foerdergeber')
 					)
 			);
 

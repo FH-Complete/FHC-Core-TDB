@@ -14,7 +14,8 @@ $query = 'SELECT person.vorname AS "Vorname",
 			SPLIT_PART(sj.studienjahr_kurzbz, \'/\', 1 ) AS startjahr,
 			CONCAT(20, SPLIT_PART(sj.studienjahr_kurzbz, \'/\', 2 )) AS endjahr,
 			bpks.vbpk_zp_td AS "TransparentVBK",
-			bpks.vbpk_as AS "StatistikAustriaVBK"
+			bpks.vbpk_as AS "StatistikAustriaVBK",
+			person.person_id
 		FROM public.tbl_konto konto
 		JOIN public.tbl_person person USING (person_id)
 		JOIN public.tbl_studiensemester ss ON konto.studiensemester_kurzbz = ss.studiensemester_kurzbz 
@@ -42,6 +43,9 @@ $filterWidgetArray = array(
 	'datasetRepresentation' => 'tablesorter',
 	'tableUniqueId' => 'bpkExport',
 	'hideOptions' => true,
+	'additionalColumns' => array(
+		'Option'
+	),
 	'columnsAliases' => array(
 		'Vorname',
 		'Nachname',
@@ -52,12 +56,31 @@ $filterWidgetArray = array(
 		'Förderfall-ID',
 		'Leistungsdaten-ID',
 		'Zeitpunkt Von',
-		'Zeitpunkt Bis'
+		'Zeitpunkt Bis',
+		'TransparentVBK',
+		'StatistikAustriaVBK'
 	),
 	'formatRow' => function($datasetRaw) {
 
 		if ($datasetRaw->{'Buchungsdatum'} !== null)
 			$datasetRaw->{'Buchungsdatum'} = date_format(date_create($datasetRaw->{'Buchungsdatum'}), 'd.m.Y');
+
+		if ($datasetRaw->{'startjahr'} !== null)
+			$datasetRaw->{'startjahr'} = (string)(int)$datasetRaw->{'startjahr'} - 1;
+
+		if ($datasetRaw->{'endjahr'} !== null)
+			$datasetRaw->{'endjahr'} = (string)(int)$datasetRaw->{'endjahr'} - 1;
+
+		if (is_null($datasetRaw->{'TransparentVBK'}) || is_null($datasetRaw->{'StatistikAustriaVBK'}))
+		{
+			$datasetRaw->{'Option'} = sprintf(
+				'<a href="%s?person_id=%s">Details</a>',
+				site_url('extensions/FHC-Core-TDB/TDB/bpkDetails'),
+				$datasetRaw->{'person_id'}
+			);
+		}
+		else
+			$datasetRaw->{'Option'} = '-';
 
 		return $datasetRaw;
 	},

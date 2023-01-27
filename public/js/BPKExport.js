@@ -11,7 +11,7 @@ $(document).ready(function() {
 			FHC_DialogLib.alertWarning('Bitte alle Felder ausfüllen!');
 			return false;
 		}
-		window.open(CONTROLLER_URL + '/export?exportDate=' + $('#exportDate').val() +'&bpkExportTest='+ $('#bpkExportTest').val());
+		window.open(CONTROLLER_URL + '/xmlExport?exportDate=' + $('#exportDate').val() +'&bpkExportTest='+ $('#bpkExportTest').val());
 	});
 
 	$('#csvExport').click(function()

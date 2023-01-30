@@ -5,12 +5,8 @@ class TDB extends Auth_Controller
 {
 
 	private $_ci;
-
 	private $_uid;
 
-	private $uebermittlungsID;
-
-	private $test;
 	/**
 	 * Constructor
 	 */
@@ -18,9 +14,11 @@ class TDB extends Auth_Controller
 	{
 		parent::__construct(array(
 				'index'=>'admin:rw',
-				'export' => 'admin:rw',
+				'xmlExport' => 'admin:rw',
 				'csvExport' => 'admin:rw',
-				'csvImport' => 'admin:rw'
+				'csvImport' => 'admin:rw',
+				'bpkDetails' => 'admin:rw',
+				'saveBPKs' => 'admin:rw'
 			)
 		);
 
@@ -28,16 +26,18 @@ class TDB extends Auth_Controller
 		$this->_setAuthUID();
 		$this->setControllerId(); // sets the controller id
 
-		$this->_ci->load->model('crm/Konto_model', 'KontoModel');
 		$this->_ci->load->model('organisation/Studiensemester_model', 'StudiensemesterModel');
-		$this->_ci->load->model('extensions/FHC-Core-TDB/TDBExport_model', 'TDBExportModel');
 		$this->_ci->load->model('extensions/FHC-Core-TDB/TDBBPKS_model', 'TDBBPKSModel');
+		$this->_ci->load->model('person/person_model', 'PersonModel');
 		$this->_ci->load->library('AuthLib');
 		$this->_ci->load->library('DocumentLib');
 		$this->_ci->load->library('WidgetLib');
 		$this->_ci->load->library('PhrasesLib');
+		$this->_ci->load->library('extensions/FHC-Core-TDB/TDBExportLib');
+
+
 		$this->_ci->load->helper('hlp_sancho_helper');
-		$this->load->helper('form');
+		$this->_ci->load->helper('form');
 		$this->_ci->loadPhrases(
 			array(
 				'person',
@@ -77,28 +77,25 @@ class TDB extends Auth_Controller
 		$this->load->view('extensions/FHC-Core-TDB/bpkExport', $data);
 	}
 
-	public function export()
+	public function xmlExport()
 	{
 		$exportDate = $this->_ci->input->get('exportDate');
 		$testExport = $this->_ci->input->get('bpkExportTest');
 
-		if ($testExport === 'false')
-			$this->test = false;
-		elseif ($testExport === 'true')
-			$this->test = true;
-		else
-			$this->terminateWithJsonError("Falsche Parameterübergabe");
+		$rootElement = $this->_ci->tdbexportlib->createRootElement();
+		$this->_ci->tdbexportlib->createHeaderElement($rootElement, $testExport);
+		$this->_ci->tdbexportlib->createBodyElement($rootElement, $exportDate);
+		return $this->_ci->tdbexportlib->createXMLExport($exportDate);
+	}
 
-		$this->domDoc = new DOMDocument('1.0', 'UTF-8');
+	public function csvExport()
+	{
+		$exportDate = $this->_ci->input->get('csvExportDate');
 
-		$rootElement = $this->createRootElement();
-		$this->createHeaderElement($rootElement, $testExport);
-		$this->createBodyElement($rootElement, $exportDate);
+		if (isEmptyString($exportDate))
+			$this->terminateWithJsonError('Fehlerhafte Parameterübergabe');
 
-		header('Content-Type: text/xml');
-		header('Content-Disposition: attachment; filename="Export_' . $exportDate . '.xml"');
-		$output = $this->domDoc->saveXML();
-		echo $output;
+		$this->_ci->tdbexportlib->createCSVExport($exportDate);
 	}
 
 	public function csvImport()
@@ -113,7 +110,7 @@ class TDB extends Auth_Controller
 			{
 				$row++;
 
-				if ($row==1)
+				if ($row === 1)
 					continue;
 
 				$check = $this->_ci->TDBBPKSModel->loadWhere(array('person_id' => $data[0]));
@@ -137,273 +134,121 @@ class TDB extends Auth_Controller
 		}
 	}
 
-	public function csvExport()
+	public function saveBPKs()
 	{
-		$exportDate = $this->_ci->input->get('csvExportDate');
+		$person_id = $this->_ci->input->post('person_id');
 
-		$result = $this->getForderfaelleData($exportDate);
+		if (!is_numeric($person_id))
+			$this->terminateWithJsonError($this->_ci->p->t('ui', 'fehlerBeimLesen'));
 
-		if (!hasData($result))
-			$this->terminateWithJsonError('Keine Buchungen gefunden.');
+		$person = $this->_ci->PersonModel->load($person_id);
 
-		foreach (getData($result) as $key => $row)
+		if (isError($person))
+			$this->terminateWithJsonError(getError($person));
+
+		if (!hasData($person))
+			$this->terminateWithJsonError($this->_ci->p->t('ui', 'fehlerBeimLesen'));
+
+		$bpkZP = $this->_ci->input->post('bpkZP');
+		$bpkAS = $this->_ci->input->post('bpkAS');
+
+		if (isEmptyString($bpkZP) || isEmptyString($bpkAS))
+			$this->terminateWithJsonError($this->_ci->p->t('ui', 'errorFelderFehlen'));
+
+		$bpks = $this->_ci->TDBBPKSModel->loadWhere(array('person_id' => $person_id));
+
+		if (isError($bpks))
+			$this->terminateWithJsonError($this->_ci->p->t('ui', 'fehlerBeimLesen'));
+
+		if (hasData($bpks))
 		{
-			$check = $this->_ci->TDBBPKSModel->loadWhere(array('person_id' => $row->person_id));
+			$bpks = getData($bpks)[0];
 
-			if (!hasData($check))
-				$this->_ci->TDBBPKSModel->insert(array('person_id' => $row->person_id));
-		}
-
-		$filename = "BPK_XZVR-0074476426_01.csv";
-		header('Content-type: text/csv; charset=utf-8');
-		header('Content-Disposition: attachment; filename='.$filename);
-
-		$file = fopen('php://output', 'w');
-
-		$csvData = array('LAUFNTR', 'NACHNAME', 'VORNAME', 'GEBDATUM', 'NAME_VOR_ERSTER_EHE', 'GEBORT', 'GESCHLECHT', 'STAATSANGEHÖRIGKEIT',
-						'ANSCHRIFTSSTAAT', 'GEMEINDENAME', 'PLZ', 'STRASSE', 'HAUSNR');
-
-		fputcsv($file, $csvData, ';');
-
-		foreach (getData($result) as $key => $row)
-		{
-			$csvRow = array($row->person_id, $row->nachname, $row->vorname, $row->gebdatum, '',
-				$row->gebort, $row->geschlecht, $row->staatsangehoerigkeit, $row->anschriftsstaat,
-				$row->gemeinde, $row->plz, '', '');
-
-			fputcsv($file, $csvRow, ';');
-		}
-		fclose($file);
-		exit();
-	}
-
-	private function getForderfaelleData($exportDate)
-	{
-		$this->_ci->KontoModel->addJoin('public.tbl_person', 'person_id');
-		$this->_ci->KontoModel->addJoin('public.tbl_adresse', 'person_id');
-		$this->_ci->KontoModel->addJoin('bis.tbl_nation s', 'staatsbuergerschaft = s.nation_code');
-		$this->_ci->KontoModel->addJoin('bis.tbl_nation a', 'nation = a.nation_code');
-		$this->_ci->KontoModel->addJoin('public.tbl_studiensemester ss', 'tbl_konto.studiensemester_kurzbz = ss.studiensemester_kurzbz');
-		$this->_ci->KontoModel->addJoin('public.tbl_studienjahr sj', 'ss.studienjahr_kurzbz = sj.studienjahr_kurzbz');
-		$this->_ci->KontoModel->addJoin('extension.tbl_tdb_bpks bpks', 'bpks.person_id = tbl_person.person_id', 'LEFT');
-		$this->_ci->KontoModel->addSelect('SPLIT_PART(sj.studienjahr_kurzbz, \'/\', 1 ) as startjahr,
-										CONCAT(20, SPLIT_PART(sj.studienjahr_kurzbz, \'/\', 2 )) as endjahr,
-										matr_nr,
-										tbl_konto.*,
-										ABS(betrag) AS betrag,
-										tbl_person.*,
-										s.iso3166_1_a3 AS staatsangehoerigkeit,
-										a.iso3166_1_a3 AS anschriftsstaat,
-										tbl_adresse.*, bpks.*,
-										tbl_person.person_id as person_id');
-		/*
-		 * OR tbl_konto.buchungstyp_kurzbz = 'ZuschussIO'
-		 */
-		return $this->_ci->KontoModel->loadWhere(
-			"(tbl_konto.buchungstyp_kurzbz = 'Leistungsstipendium')
-			AND tbl_adresse.zustelladresse = true
-			AND tbl_konto.buchungsdatum >= " . $this->_ci->KontoModel->escape($exportDate). "
-			AND 0 = (
-				SELECT sum(betrag)
-				FROM public.tbl_konto skonto
-				WHERE skonto.buchungsnr = tbl_konto.buchungsnr_verweis
-					OR skonto.buchungsnr_verweis = tbl_konto.buchungsnr_verweis
-			)"
-		);
-	}
-
-	private function createRootElement()
-	{
-		$root = $this->domDoc->createElement('UebermittlungFoerderfallLeistungsdaten');
-
-		$xmlns = $this->domDoc->createAttribute('xmlns');
-		$xmlnsVal = $this->domDoc->createTextNode('http://transparenzportal.gv.at/foerderfallLeistungsdaten');
-		$xmlns->appendChild($xmlnsVal);
-
-		$xsi = $this->domDoc->createAttribute('xmlns:xsi');
-		$xsiVal = $this->domDoc->createTextNode('http://www.w3.org/2001/XMLSchema-instance');
-		$xsi->appendChild($xsiVal);
-
-		$root->appendChild($xmlns);
-		$root->appendChild($xsi);
-
-		$this->domDoc->appendChild($root);
-		return $root;
-	}
-
-	public function createHeaderElement($rootElement, $testExport)
-	{
-		$header = $this->domDoc->createElement('Header');
-		$rootElement->appendChild($header);
-
-		$i = 0;
-		do {
-			$i++;
-			$this->uebermittlungsID = 'UEB-FTHW-TDB-'. date('Y-m-d') . '-' . $i;
-			$check = $this->_ci->TDBExportModel->loadWhere(array('uebermittlung_id' => $this->uebermittlungsID));
-		} while(hasData($check));
-
-		$headerValue = array(
-			'OkzUeb' => 'XZVR-0074476426',
-			'NameUeb' => 'Fachhochschule Technikum Wien',
-			'UebermittlungsId' => $this->uebermittlungsID,
-			'TsErstellung' => date('Y-m-d\TH:i:s'),
-			'Test' => $testExport
-		);
-		$this->addToXml($headerValue, $header);
-	}
-
-	public function createBodyElement($rootElement, $exportDate)
-	{
-		$foerderfaelle = $this->getForderfaelle($exportDate);
-
-		$aufruferReferenzVal = 1;
-
-		foreach($foerderfaelle as $foerderfall)
-		{
-			//Der Förderfall
-			$foerderfallLeistungsdatenElement = $this->createFoerderfallLeistungsdaten($aufruferReferenzVal);
-			$rootElement->appendChild($foerderfallLeistungsdatenElement);
-			$foerderfallElement = $this->domDoc->createElement('Foerderfall');
-			$this->addToXml($foerderfall['Foerderfall'], $foerderfallElement);
-			$foerderfallLeistungsdatenElement->appendChild($foerderfallElement);
-
-			$aufruferReferenzVal++;
-
-			//Die Auszahlung
-			$foerderfallLeistungsdatenElement = $this->createFoerderfallLeistungsdaten($aufruferReferenzVal);
-			$rootElement->appendChild($foerderfallLeistungsdatenElement);
-			$leistungsDatenElement = $this->domDoc->createElement('Leistungsdaten');
-			$this->addToXml($foerderfall['Leistungsdaten'], $leistungsDatenElement);
-			$foerderfallLeistungsdatenElement->appendChild($leistungsDatenElement);
-
-			$aufruferReferenzVal++;
-		}
-
-
-	}
-
-	private function createFoerderfallLeistungsdaten($aufruferReferenzVal)
-	{
-		$leistungsDaten = $this->domDoc->createElement('FoerderfallLeistungsdaten');
-
-		$aktionAttr = $this->domDoc->createAttribute('Aktion');
-		$aktionVal = $this->domDoc->createTextNode('E');
-		$aktionAttr->appendChild($aktionVal);
-
-		$aufruferReferenzAttr = $this->domDoc->createAttribute('AufruferReferenz');
-		$aktionVal = $this->domDoc->createTextNode($aufruferReferenzVal);
-		$aufruferReferenzAttr->appendChild($aktionVal);
-
-		$leistungsDaten->appendChild($aktionAttr);
-		$leistungsDaten->appendChild($aufruferReferenzAttr);
-		return $leistungsDaten;
-	}
-
-	private function getForderfaelle($exportDate)
-	{
-		$result = $this->getForderfaelleData($exportDate);
-
-		if (!hasData($result))
-		{
-			$this->terminateWithJsonError('Keine Buchungen gefunden.');
-		}
-
-		$array = array();
-		foreach (getData($result)  as $key => $leistungsstipendium)
-		{
-			if (!$this->test)
+			if (!isEmptyString($bpks->vbpk_zp_td) || !isEmptyString($bpks->vbpk_as))
 			{
-				$check = $this->_ci->TDBExportModel->loadWhere(array('vorgangs_id' => $leistungsstipendium->buchungsnr));
-
-				if (hasData($check))
-					continue;
+				$this->terminateWithJsonError('BPKs bereits vorhanden');
 			}
 
-			$array[$key]['Foerderfall'] = array(
-				'VorgangsId' => $leistungsstipendium->buchungsnr,
-				'FoerderfallId' => $leistungsstipendium->buchungsnr,
-				'LeistungsangebotID' => '1007202', //1007202 in Prod 1047349 in Test
-				'Foerdergegenstand' => 'F2840Q1006',
-				'Status' => array(
-					'Datum' => $leistungsstipendium->buchungsdatum,
-					'Status' => 'gewaehrt',
-					'Betrag' => $leistungsstipendium->betrag
-				),
-				'Foerdergeber' => array(
-					'OkzLst' => 'XZVR-0074476426',
-					'NameLst' => 'Fachhochschule Technikum Wien'
-				),
-				'Foerdernehmer' => array(
-					'FoerdernehmerNatPers' => array(
-						'vbPK_ZP_TD' => $leistungsstipendium->vbpk_zp_td,
-						'vbPK_AS' => $leistungsstipendium->vbpk_as
-					)
-				),
-				'Kontaktinfo' => array(
-					'Kontakt' => 'Gerhard Brandstätter'
-					/*'KontaktEmail' => '',
-					'KontaktTel' => ''*/
-				),
+			$update = $this->_ci->TDBBPKSModel->update(
+				array('person_id' => $person_id),
+				array('vbpk_zp_td' => rtrim($bpkZP),
+					'vbpk_as' => rtrim($bpkAS))
 			);
 
-			$array[$key]['Leistungsdaten'] = array(
-				'FoerderfallId' => $leistungsstipendium->buchungsnr,
-				'LeistungsdatenId' => $leistungsstipendium->buchungsnr,
-				'Leistungsbezeichnung' => 'Leistungsstipendium',
-				'Betrag' => $leistungsstipendium->betrag,
-				'JahrVon' => $leistungsstipendium->startjahr,
-				'JahrBis' => $leistungsstipendium->endjahr,
-				'DatumAuszahlung' => $leistungsstipendium->buchungsdatum,
-				'Foerdergeber' =>
-					array(
-						'OkzLst' => 'XZVR-0074476426',
-						'NameLst' => 'Fachhochschule Technikum Wien'
-					)
+			if (isError($update))
+			{
+				$this->terminateWithJsonError(getError($update));
+			}
+		}
+		else
+		{
+			$insert = $this->_ci->TDBBPKSModel->insert(
+				array('person_id' => $person_id,
+					'vbpk_zp_td' => rtrim($bpkZP),
+					'vbpk_as' => rtrim($bpkAS)
+				)
 			);
 
-			if (!$this->test)
-				$this->addToExport($leistungsstipendium->buchungsnr);
-		}
-		return $array;
-	}
-
-	private function addToXml($values, $element)
-	{
-		foreach ($values as $key => $value)
-		{
-			if(is_array($value))
+			if (isError($insert))
 			{
-				$keyElement = $this->domDoc->createElement($key);
-				$element->appendChild($keyElement);
-				$this->addToXml($value, $keyElement);
-			}
-			else
-			{
-				$subElt = $this->domDoc->createElement($key);
-				$subNode = $element->appendChild($subElt);
-				$textNode = $this->domDoc->createTextNode($value);
-				$subNode->appendChild($textNode);
+				$this->terminateWithJsonError(getError($insert));
 			}
 		}
+
+		$this->outputJsonSuccess('Erfolgreich gespeichert!');
 	}
 
-	private function addToExport($vorgangs_id)
+	public function bpkDetails()
 	{
-		$this->_ci->TDBExportModel->insert(
-			array(
-				'uebermittlung_id' => $this->uebermittlungsID,
-				'vorgangs_id' => $vorgangs_id
-			)
+		$person_id = $this->_ci->input->get('person_id');
+
+		if (!is_numeric($person_id))
+			$this->terminateWithJsonError($this->_ci->p->t('ui', 'fehlerBeimLesen'));
+
+		$person = $this->_ci->PersonModel->load($person_id);
+
+		if (isError($person))
+			$this->terminateWithJsonError(getError($person));
+
+		if (!hasData($person))
+			$this->terminateWithJsonError($this->_ci->p->t('ui', 'fehlerBeimLesen'));
+
+		$this->_setNavigationMenuShowDetails();
+
+		$data = array(
+			'person_id' => $person_id
 		);
+		$this->load->view('extensions/FHC-Core-TDB/bpkDetails', $data);
 	}
-	/**
-	 * Retrieve the UID of the logged user and checks if it is valid
-	 */
+
 	private function _setAuthUID()
 	{
 		$this->_uid = getAuthUID();
 
 		if (!$this->_uid) show_error('User authentification failed');
+	}
+
+	private function _setNavigationMenuShowDetails()
+	{
+		$this->load->library('NavigationLib', array('navigation_page' => 'extensions/FHC-Core-TDB/TDB/bpkDetails'));
+
+		$link = site_url('extensions/FHC-Core-TDB/TDB');
+
+		$this->navigationlib->setSessionMenu(
+			array(
+				'back' => $this->navigationlib->oneLevel(
+					'Zurück',	// description
+					$link,			// link
+					array(),		// children
+					'angle-left',	// icon
+					true,			// expand
+					null, 			// subscriptDescription
+					null, 			// subscriptLinkClass
+					null, 			// subscriptLinkValue
+					'', 			// target
+					1 				// sort
+				)
+			)
+		);
 	}
 }

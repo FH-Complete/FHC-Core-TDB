@@ -11,7 +11,7 @@ $(document).ready(function() {
 			FHC_DialogLib.alertWarning('Bitte alle Felder ausfüllen!');
 			return false;
 		}
-		window.open(CONTROLLER_URL + '/export?exportDate=' + $('#exportDate').val() +'&bpkExportTest='+ $('#bpkExportTest').val());
+		window.open(CONTROLLER_URL + '/xmlExport?exportDate=' + $('#exportDate').val() +'&bpkExportTest='+ $('#bpkExportTest').val());
 	});
 
 	$('#csvExport').click(function()
@@ -24,8 +24,8 @@ $(document).ready(function() {
 		window.open(CONTROLLER_URL + '/csvExport?csvExportDate=' + $('#csvExportDate').val());
 	});
 
-	$('#importCSV').submit(function(e){
-
+	$('#importCSV').submit(function(e)
+	{
 		e.preventDefault();
 
 		FHC_AjaxClient.ajaxCallPost(
@@ -53,5 +53,11 @@ $(document).ready(function() {
 			}
 		);
 	});
+
+	$("#datasetActionsTop").append(
+		"<div class='row'>"+
+			"<div class='col-xs-12 text-center'><i class='fa fa-circle text-danger'></i> Keine bPK gefunden </div>"+
+		"</div>"
+	);
 });
 

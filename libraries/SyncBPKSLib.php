@@ -17,8 +17,8 @@ class SyncBPKSLib
 				'functionIndex' => 3,
 				'lineIndex' => 2,
 				'dbLogType' => 'job', // required
-				'dbExecuteUser' => 'Cronjob system',
-				'requestId' => 'JOB',
+				'dbExecuteUser' => 'Jobs queue system',
+				'requestId' => 'JQW',
 				'requestDataFormatter' => function($data) {
 					return json_encode($data);
 				}
@@ -28,7 +28,7 @@ class SyncBPKSLib
 
 		$this->_ci->load->model('crm/Konto_model', 'KontoModel');
 		$this->_ci->load->model('extensions/FHC-Core-TDB/TDBBPKS_model', 'TDBBPKSModel');
-		$this->_ci->load->library('extensions/FHC-Core-TDB/TDBManagementLib');
+		$this->_ci->load->library('extensions/FHC-Core-TDB/DataManagementLib');
 	}
 	
 	/**
@@ -41,7 +41,7 @@ class SyncBPKSLib
 		if (isEmptyArray($persons)) return success('No BPKs needed');
 
 		// Retrieves all users data
-		$personsAllData = $this->_ci->tdbmanagementlib->getAllPersonsData($persons);
+		$personsAllData = $this->_ci->datamanagementlib->getAllPersonsData($persons);
 
 		if (isError($personsAllData)) return $personsAllData;
 		if (!hasData($personsAllData)) return error('No data available for the given persons');
@@ -55,30 +55,24 @@ class SyncBPKSLib
 
 			if (is_soap_fault($bpkResult))
 			{
-				$this->_ci->LogLibTDB->logWarningDB($bpkResult->faultcode . " Error message '" . $bpkResult->faultstring .  "' person_id: " . $personData->person_id);
-
 				if (strpos($bpkResult->faultcode, 'pvp:F4') === 0)
 				{
-					return error('Error fetching BPKs');
+					return error("Error fetching BPKs. Faultcode: '". $bpkResult->faultcode . "' Error message: '" . $bpkResult->faultstring . "'");
 				}
+
+				$this->_ci->LogLibTDB->logWarningDB("Faultcode: '" . $bpkResult->faultcode . "' Error message: '" . $bpkResult->faultstring .  "' person_id: " . $personData->person_id);
 
 				continue;
 			}
 
-			// Trying to get the needed BPKs
-			$zp_td_key = array_search('urn:publicid:gv.at:ecdid+BMF+ZP-TD', array_column($bpkResult->FremdBPK, 'BereichsKennung'));
-			$sta_as_key = array_search('urn:publicid:gv.at:ecdid+BBA-STA+AS', array_column($bpkResult->FremdBPK, 'BereichsKennung'));
+			$newBPKs = getBPKFromResponse($bpkResult->FremdBPK);
 
-			// If we got the needed BPKs we store in the database
-			if ($zp_td_key !== false && $sta_as_key !== false)
+			if ($newBPKs !== false)
 			{
-				$insertResult = $this->_ci->TDBBPKSModel->insert([
-					'person_id' => $personData->person_id,
-					'vbpk_as' => $bpkResult->FremdBPK[$sta_as_key]->FremdBPK,
-					'vbpk_zp_td' => $bpkResult->FremdBPK[$zp_td_key]->FremdBPK
-				]);
+				$result = $this->_ci->datamanagementlib->insertNewBPKs($newBPKs, $personData->person_id, $bpkResult);
 				
-				if (isError($insertResult)) return $insertResult;
+				if (isError($result))
+					return $result;
 			}
 			else
 			{

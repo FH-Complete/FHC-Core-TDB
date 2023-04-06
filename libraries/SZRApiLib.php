@@ -3,9 +3,9 @@
 class SZRApiLib
 {
 
-	private $wsdl = APPPATH."extensions/FHC-Core-TDB/config/WSDLs/szr/SZR.wsdl";
 	private $client;
 	private $_ci;
+	const WSDL_FULL_NAME = APPPATH.'config/'.ENVIRONMENT.'/extensions/FHC-Core-TDB/WSDLs/szr/SZR.wsdl';
 
 	public function __construct()
 	{
@@ -18,7 +18,7 @@ class SZRApiLib
 		$options = $this->getOptions();
 		$header = $this->getHeader();
 
-		$this->client = new SoapClient($this->wsdl, $options);
+		$this->client = new SoapClient(self::WSDL_FULL_NAME, $options);
 		$this->client->__setSoapHeaders($header);
 		$this->client->__setLocation($this->_ci->config->item('endpoint'));
 	}
@@ -58,43 +58,81 @@ class SZRApiLib
 		return new SoapHeader('urn:SZRServices', 'Security', $headerValue);
 	}
 
-	public function getBPK($person)
+	private function getParam($person, $param = array())
 	{
-		$this->setSoapClient();
-
-		$param = [
-			'PersonInfo' => [
-				'Person' => [
-					'Name' => [
-						'GivenName' => $person->vorname,
-						'FamilyName' => $person->nachname
+		if (empty($param))
+		{
+			$apiParam = [
+				'PersonInfo' => [
+					'Person' => [
+						'Name' => [
+							'GivenName' => $person->vorname,
+							'FamilyName' => $person->nachname
+						],
+						'DateOfBirth' => $person->gebdatum
 					],
-					'DateOfBirth' => $person->gebdatum,
-					'PlaceOfBirth' => $person->gebort,
-					//'Sex' => $person->geschlecht,
-					'Nationality' => $person->staatsangehoerigkeit
+					'RegularDomicile' => [
+						'PostalCode' => $person->plz
+					]
 				],
-				'RegularDomicile' => [
-					'PostalCode' => $person->plz
-				]
-			],
-			/*'BereichsKennung' => 'urn:publicid:gv.at:wbpk+' . $this->_ci->config->item('bereichs_kennung'),
-			'VKZ' => $this->_ci->config->item('vkz'),*/
-			'Target' => [
-				['BereichsKennung' => 'urn:publicid:gv.at:cdid+ZP-TD', 'VKZ' => 'BMF'],
-				['BereichsKennung' => 'urn:publicid:gv.at:cdid+AS', 'VKZ' => 'BBA-STA'],
-			]
+			];
+		}
+		else
+		{
+			$apiParam = [
+				'PersonInfo' => [
+					'Person' => [
+						'Name' => [
+							'GivenName' => $param['vorname'],
+							'FamilyName' => $param['nachname']
+						],
+					],
+				],
+			];
+
+			if (isset($param['geschlecht']))
+				$apiParam['PersonInfo']['Person']['Sex'] = $param['geschlecht'];
+
+			if (isset($param['gebort']))
+				$apiParam['PersonInfo']['Person']['PlaceOfBirth'] = $param['gebort'];
+
+			if (isset($param['gebdatum']))
+				$apiParam['PersonInfo']['Person']['DateOfBirth'] = date('Y-m-d', strtotime($param['gebdatum']));
+
+			if (isset($param['gebnation']))
+				$apiParam['PersonInfo']['Person']['CountryOfBirth'] = $param['gebnation'];
+
+			if (isset($param['staatsbuerger']))
+				$apiParam['PersonInfo']['Person']['Nationality'] = $param['staatsbuerger'];
+
+			if (isset($param['strasse']))
+				$apiParam['PersonInfo']['RegularDomicile']['DeliveryAddress']['StreetName'] = $param['strasse'];
+
+			if (isset($param['plz']))
+				$apiParam['PersonInfo']['RegularDomicile']['PostalCode'] = $param['plz'];
+		}
+
+		$apiParam['Target' ] = [
+			['BereichsKennung' => 'urn:publicid:gv.at:cdid+ZP-TD', 'VKZ' => 'BMF'],
+			['BereichsKennung' => 'urn:publicid:gv.at:cdid+AS', 'VKZ' => 'BBA-STA'],
 		];
+
+		return $apiParam;
+	}
+
+	public function getBPK($person, $param = array())
+	{
+
+		$this->setSoapClient();
+		$apiParam = $this->getParam($person, $param);
 
 		try
 		{
-			return ($this->client->{'GetBPK'}($param));
+			return $this->client->{'GetBPK'}($apiParam);
 		}
 		catch (SoapFault $e)
 		{
 			return $e;
 		}
-
-
 	}
 }

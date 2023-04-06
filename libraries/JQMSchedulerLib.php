@@ -36,7 +36,7 @@ class JQMSchedulerLib
 						WHERE skonto.buchungsnr = konto.buchungsnr_verweis
 							OR skonto.buchungsnr_verweis = konto.buchungsnr_verweis
 					)
-					AND person.person_id NOT IN (SELECT person_id FROM extension.tbl_tdb_bpks)',
+					AND person.person_id NOT IN (SELECT person_id FROM extension.tbl_tdb_bpks WHERE vbpk_as IS NOT NULL OR vbpk_zp_td IS NOT NULL)',
 				[$this->_ci->config->item('buchungstyp'), $this->_ci->config->item('buchungsdatum')]);
 
 		if (isError($newUsersResult)) return $newUsersResult;

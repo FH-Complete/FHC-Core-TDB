@@ -6,12 +6,15 @@ $(document).ready(function() {
 
 	$('#bpkExport').click(function()
 	{
-		if ($('#exportDate').val() === '')
+		var exportData = $('#exportDate').val();
+		var test = $('#test').val();
+		if (exportData === '')
 		{
 			FHC_DialogLib.alertWarning('Bitte alle Felder ausfüllen!');
 			return false;
 		}
-		window.open(CONTROLLER_URL + '/xmlExport?exportDate=' + $('#exportDate').val() +'&bpkExportTest='+ $('#bpkExportTest').val());
+
+		window.location = (CONTROLLER_URL + '/xmlExport?exportDate='+encodeURIComponent(exportData)+'&test='+encodeURIComponent(test));
 	});
 
 	$('#csvExport').click(function()

@@ -3,6 +3,7 @@ if (! defined('BASEPATH')) exit('No direct script access allowed');
 
 class TDB extends Auth_Controller
 {
+	const EXPORT_DATE = 'exportDate';
 
 	private $_ci;
 	private $_uid;
@@ -18,7 +19,7 @@ class TDB extends Auth_Controller
 				'csvExport' => 'admin:rw',
 				'csvImport' => 'admin:rw',
 				'bpkDetails' => 'admin:rw',
-				'saveBPKs' => 'admin:rw'
+				'searchBPKs' => 'admin:rw'
 			)
 		);
 
@@ -28,16 +29,20 @@ class TDB extends Auth_Controller
 
 		$this->_ci->load->model('organisation/Studiensemester_model', 'StudiensemesterModel');
 		$this->_ci->load->model('extensions/FHC-Core-TDB/TDBBPKS_model', 'TDBBPKSModel');
+		$this->_ci->load->model('extensions/FHC-Core-TDB/TDBExport_model', 'TDBExportModel');
 		$this->_ci->load->model('person/person_model', 'PersonModel');
+		$this->_ci->load->model('system/Filters_model', 'FiltersModel');
+
 		$this->_ci->load->library('AuthLib');
-		$this->_ci->load->library('DocumentLib');
 		$this->_ci->load->library('WidgetLib');
 		$this->_ci->load->library('PhrasesLib');
-		$this->_ci->load->library('extensions/FHC-Core-TDB/TDBExportLib');
+		$this->_ci->load->library('extensions/FHC-Core-TDB/DataManagementLib');
 
-
-		$this->_ci->load->helper('hlp_sancho_helper');
+		$this->_ci->load->helper('extensions/FHC-Core-TDB/hlp_tdb_common');
 		$this->_ci->load->helper('form');
+		
+		$this->_ci->load->config('extensions/FHC-Core-TDB/tdb');
+		
 		$this->_ci->loadPhrases(
 			array(
 				'person',
@@ -49,43 +54,82 @@ class TDB extends Auth_Controller
 		);
 	}
 
-	/**
-	 * Index Controller
-	 * @return void
-	 */
 	public function index()
 	{
 		$date = $this->_ci->input->get('exportDate');
 		$csvExportDate = $this->_ci->input->get('csvExportDate');
+		
+		$semester = $this->_ci->StudiensemesterModel->getLastOrAktSemester();
+		$semester = $this->_ci->StudiensemesterModel->getPreviousFrom(getData($semester)[0]->studiensemester_kurzbz);
 
 		if (is_null($date))
-		{
-			$semester = $this->_ci->StudiensemesterModel->getLastOrAktSemester();
-			$semester = $this->_ci->StudiensemesterModel->getPreviousFrom(getData($semester)[0]->studiensemester_kurzbz);
 			$date = getData($semester)[0]->start;
-		}
 
 		if (is_null($csvExportDate))
-		{
-			$semester = $this->_ci->StudiensemesterModel->getLastOrAktSemester();
-			$semester = $this->_ci->StudiensemesterModel->getPreviousFrom(getData($semester)[0]->studiensemester_kurzbz);
 			$csvExportDate = getData($semester)[0]->start;
-		}
 
 		$data = ['date' => $date, 'csvExportDate' => $csvExportDate];
 
-		$this->load->view('extensions/FHC-Core-TDB/bpkExport', $data);
+		$this->_ci->load->view('extensions/FHC-Core-TDB/bpkExport', $data);
 	}
 
 	public function xmlExport()
 	{
 		$exportDate = $this->_ci->input->get('exportDate');
-		$testExport = $this->_ci->input->get('bpkExportTest');
+		$test_export = $this->_ci->input->get('test') === 'true';
 
-		$rootElement = $this->_ci->tdbexportlib->createRootElement();
-		$this->_ci->tdbexportlib->createHeaderElement($rootElement, $testExport);
-		$this->_ci->tdbexportlib->createBodyElement($rootElement, $exportDate);
-		return $this->_ci->tdbexportlib->createXMLExport($exportDate);
+		$i = 0;
+		do {
+			$i++;
+			$uebermittlungs_id = $this->_ci->config->item('uebermittlungs_id') . '-' . date('Y-m-d') . '-' . $i;
+			$check = $this->_ci->TDBExportModel->loadWhere(array('uebermittlung_id' => $uebermittlungs_id));
+		} while(hasData($check));
+
+		$foerderfaelle = $this->_ci->datamanagementlib->getForderfaelleData($exportDate);
+		
+		if (isError($foerderfaelle))
+			$this->terminateWithJsonError('Fehler beim Laden der Foerderfaelle');
+		
+		$foerderfaelle = getData($foerderfaelle);
+
+		$foerderfaelle_xml_arr = array();
+
+		foreach ($foerderfaelle as $foerderfall)
+		{
+			if (is_null($foerderfall->vbpk_zp_td) || is_null($foerderfall->vbpk_as))
+				continue;
+
+			if (!$test_export)
+			{
+				$check = $this->_ci->TDBExportModel->loadWhere(array('vorgangs_id' => $foerderfall->buchungsnr));
+				
+				if (hasData($check))
+					continue;
+				
+				$this->_ci->TDBExportModel->insert(
+					array(
+						'uebermittlung_id' => $uebermittlungs_id,
+						'vorgangs_id' => $foerderfall->buchungsnr
+					)
+				);
+			}
+
+			$foerderfaelle_xml_arr[] = $foerderfall;
+		}
+
+		$params = array(
+			'uebermittlungs_id' => $uebermittlungs_id,
+			'test_export' => $test_export,
+			'foerderfaelle' => $foerderfaelle_xml_arr
+		);
+
+		$xml_content = $this->load->view('extensions/FHC-Core-TDB/tdbExport', $params, true);
+		
+		$this->output
+			->set_status_header(200)
+			->set_content_type('text/xml')
+			->set_header('Content-Disposition: attachment; filename="Export_' . $exportDate . '.xml"')
+			->set_output($xml_content);
 	}
 
 	public function csvExport()
@@ -94,8 +138,41 @@ class TDB extends Auth_Controller
 
 		if (isEmptyString($exportDate))
 			$this->terminateWithJsonError('Fehlerhafte Parameterübergabe');
+		
+		$foerderfaelle = $this->_ci->datamanagementlib->getForderfaelleData($exportDate);
+		
+		if (!hasData($foerderfaelle))
+			show_error('Keine Buchungen gefunden');
+		
+		//Filenamenkonvention: BPK_<Verwaltungskennzeichen_Org>_<laufnr>.csv
+		$filename = "BPK_" .  $this->_ci->config->item('vkz') . "_XX.csv";
+		
+		header('Content-type: text/csv; charset=utf-8');
+		header('Content-Disposition: attachment; filename='.$filename);
+		$file = fopen('php://output', 'w');
+		
+		$csvData = array('LAUFNTR', 'NACHNAME', 'VORNAME', 'GEBDATUM', 'NAME_VOR_ERSTER_EHE', 'GEBORT', 'GESCHLECHT', 'STAATSANGEHÖRIGKEIT',
+			'ANSCHRIFTSSTAAT', 'GEMEINDENAME', 'PLZ', 'STRASSE', 'HAUSNR');
+		
+		fputcsv($file, $csvData, ';');
 
-		$this->_ci->tdbexportlib->createCSVExport($exportDate);
+		foreach (getData($foerderfaelle) as $key => $foerderfall)
+		{
+			$check = $this->_ci->TDBBPKSModel->loadWhere(array('person_id' => $foerderfall->person_id));
+			
+			if (!hasData($check))
+			{
+				$this->_ci->TDBBPKSModel->insert(array('person_id' => $foerderfall->person_id));
+				
+				$csvRow = array($foerderfall->person_id, $foerderfall->nachname, $foerderfall->vorname, $foerderfall->gebdatum, '',
+					$foerderfall->gebort, $foerderfall->geschlecht, $foerderfall->staatsangehoerigkeit, $foerderfall->anschriftsstaat,
+					$foerderfall->gemeinde, $foerderfall->plz, '', '');
+				
+				fputcsv($file, $csvRow, ';');
+			}
+		}
+		fclose($file);
+		return $file;
 	}
 
 	public function csvImport()
@@ -134,7 +211,7 @@ class TDB extends Auth_Controller
 		}
 	}
 
-	public function saveBPKs()
+	public function searchBPKs()
 	{
 		$person_id = $this->_ci->input->post('person_id');
 
@@ -149,53 +226,55 @@ class TDB extends Auth_Controller
 		if (!hasData($person))
 			$this->terminateWithJsonError($this->_ci->p->t('ui', 'fehlerBeimLesen'));
 
-		$bpkZP = $this->_ci->input->post('bpkZP');
-		$bpkAS = $this->_ci->input->post('bpkAS');
+		$existsBPKs = $this->_ci->TDBBPKSModel->loadWhere(array('person_id' => $person_id));
 
-		if (isEmptyString($bpkZP) || isEmptyString($bpkAS))
-			$this->terminateWithJsonError($this->_ci->p->t('ui', 'errorFelderFehlen'));
-
-		$bpks = $this->_ci->TDBBPKSModel->loadWhere(array('person_id' => $person_id));
-
-		if (isError($bpks))
+		if (isError($existsBPKs))
 			$this->terminateWithJsonError($this->_ci->p->t('ui', 'fehlerBeimLesen'));
 
-		if (hasData($bpks))
+		if (hasData($existsBPKs))
 		{
-			$bpks = getData($bpks)[0];
+			$existsBPKsData = getData($existsBPKs)[0];
 
-			if (!isEmptyString($bpks->vbpk_zp_td) || !isEmptyString($bpks->vbpk_as))
+			if (!isEmptyString($existsBPKsData->vbpk_zp_td) || !isEmptyString($existsBPKsData->vbpk_as))
 			{
 				$this->terminateWithJsonError('BPKs bereits vorhanden');
 			}
-
-			$update = $this->_ci->TDBBPKSModel->update(
-				array('person_id' => $person_id),
-				array('vbpk_zp_td' => rtrim($bpkZP),
-					'vbpk_as' => rtrim($bpkAS))
-			);
-
-			if (isError($update))
-			{
-				$this->terminateWithJsonError(getError($update));
-			}
 		}
-		else
+
+		$this->_ci->load->library('extensions/FHC-Core-TDB/SZRApiLib');
+
+		$params = $this->_ci->input->post();
+		$bpkResult = $this->_ci->szrapilib->getBPK($person, $params);
+		
+		if (is_soap_fault($bpkResult))
 		{
-			$insert = $this->_ci->TDBBPKSModel->insert(
-				array('person_id' => $person_id,
-					'vbpk_zp_td' => rtrim($bpkZP),
-					'vbpk_as' => rtrim($bpkAS)
-				)
-			);
-
-			if (isError($insert))
+			if (strpos($bpkResult->faultcode, 'F230') !== false)
 			{
-				$this->terminateWithJsonError(getError($insert));
+				$this->terminateWithJsonError('Es konnte keine Person im ZMR und/oder ERnP gefunden werden.');
+			}
+			else if ((strpos($bpkResult->faultcode, 'F231') !== false) || strpos($bpkResult->faultcode, 'F233') !== false)
+			{
+				$this->terminateWithJsonError('Es wurden zu viele Personen im ZMR und/oder ERnP gefunden, so dass das Ergebnis nicht
+				eindeutig war. Mit weiteren Suchkriterien kann das Ergebnis noch eindeutig gemacht
+				werden.');
+			}
+			else if (strpos($bpkResult->faultcode, 'pvp:F4') === 0)
+			{
+				$this->terminateWithJsonError('Fehler beim holen der BPKs');
 			}
 		}
 
-		$this->outputJsonSuccess('Erfolgreich gespeichert!');
+		$newBPKs = getBPKFromResponse($bpkResult->FremdBPK);
+
+		if ($newBPKs !== false)
+		{
+			$result = $this->_ci->datamanagementlib->insertNewBPKs($newBPKs, $person_id, $bpkResult);
+
+			if (isError($result))
+				$this->terminateWithJsonError(getError($result));
+		}
+
+		$this->outputJsonSuccess('BPKs erfolgreich gespeichert!');
 	}
 
 	public function bpkDetails()
@@ -205,7 +284,7 @@ class TDB extends Auth_Controller
 		if (!is_numeric($person_id))
 			$this->terminateWithJsonError($this->_ci->p->t('ui', 'fehlerBeimLesen'));
 
-		$person = $this->_ci->PersonModel->load($person_id);
+		$person = $this->_ci->PersonModel->getPersonStammdaten($person_id, true);
 
 		if (isError($person))
 			$this->terminateWithJsonError(getError($person));
@@ -216,9 +295,10 @@ class TDB extends Auth_Controller
 		$this->_setNavigationMenuShowDetails();
 
 		$data = array(
-			'person_id' => $person_id
+			'person' => getData($person)
 		);
-		$this->load->view('extensions/FHC-Core-TDB/bpkDetails', $data);
+
+		$this->_ci->load->view('extensions/FHC-Core-TDB/bpkDetails', $data);
 	}
 
 	private function _setAuthUID()
@@ -230,10 +310,15 @@ class TDB extends Auth_Controller
 
 	private function _setNavigationMenuShowDetails()
 	{
-		$this->load->library('NavigationLib', array('navigation_page' => 'extensions/FHC-Core-TDB/TDB/bpkDetails'));
+		$this->_ci->load->library('NavigationLib', array('navigation_page' => 'extensions/FHC-Core-TDB/TDB/bpkDetails'));
 
 		$link = site_url('extensions/FHC-Core-TDB/TDB');
-
+		
+		$currentExportDate = $this->input->get(self::EXPORT_DATE);
+		
+		if (isset($currentExportDate))
+			$link .= '?' . self::EXPORT_DATE . '=' . $currentExportDate;
+		
 		$this->navigationlib->setSessionMenu(
 			array(
 				'back' => $this->navigationlib->oneLevel(

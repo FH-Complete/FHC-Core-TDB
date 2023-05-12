@@ -63,8 +63,8 @@ class TDBManagementLib
 			$this->_ci->KontoModel->addJoin('public.tbl_studienjahr sj', 'ss.studienjahr_kurzbz = sj.studienjahr_kurzbz');
 			$this->_ci->KontoModel->addSelect('SPLIT_PART(sj.studienjahr_kurzbz, \'/\', 1 ) as startjahr,
 										CONCAT(20, SPLIT_PART(sj.studienjahr_kurzbz, \'/\', 2 )) as endjahr,
-										ABS(betrag) AS betrag, 
-										tbl_konto.*');
+										tbl_konto.*,
+										ABS(betrag) AS betrag');
 
 			$buchungstypen = implode("','", ($this->_ci->config->item('buchungstyp')));
 			$kontoResult = $this->_ci->KontoModel->loadWhere("

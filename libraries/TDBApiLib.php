@@ -96,7 +96,7 @@ class TDBApiLib
 
 			$body['UebermittlungFoerderfallLeistungsdaten']['FoerderfallLeistungsdaten'][] = array
 			(
-				'Aktion' => 'E',
+				'Aktion' => 'K',
 				'AufruferReferenz' => $aufruferReferenzVal,
 				'Foerderfall' => array
 				(
@@ -132,7 +132,7 @@ class TDBApiLib
 
 			$body['UebermittlungFoerderfallLeistungsdaten']['FoerderfallLeistungsdaten'][] = array
 			(
-				'Aktion' => 'E',
+				'Aktion' => 'K',
 				'AufruferReferenz' => $aufruferReferenzVal,
 				'Leistungsdaten' => array
 				(

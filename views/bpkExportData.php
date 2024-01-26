@@ -3,7 +3,9 @@ $BUCHUNGSDATUM = "'" . $date ."'";
 $LEISTUNGSSTIPENDIUM = '\'Leistungsstipendium\'';
 $ZUSCHUSSIO = '\'ZuschussIO\'';
 
-$query = 'SELECT person.vorname AS "Vorname",
+$query = 'SELECT
+			person.person_id as "PersonId",
+			person.vorname AS "Vorname",
 			person.nachname AS "Nachname",
 			konto.buchungsdatum "Buchungsdatum",
 			ABS(konto.betrag) AS "Betrag",
@@ -15,12 +17,13 @@ $query = 'SELECT person.vorname AS "Vorname",
 			CONCAT(20, SPLIT_PART(sj.studienjahr_kurzbz, \'/\', 2 )) AS endjahr,
 			bpks.vbpk_zp_td AS "TransparentVBK",
 			bpks.vbpk_as AS "StatistikAustriaVBK",
-			person.person_id
+			export.uebermittlung_id AS "UebermittlungsId"
 		FROM public.tbl_konto konto
 		JOIN public.tbl_person person USING (person_id)
 		JOIN public.tbl_studiensemester ss ON konto.studiensemester_kurzbz = ss.studiensemester_kurzbz 
 		JOIN public.tbl_studienjahr sj ON ss.studienjahr_kurzbz = sj.studienjahr_kurzbz
-		LEFT JOIN extension.tbl_tdb_bpks bpks ON person.person_id = bpks.person_id 
+		LEFT JOIN extension.tbl_tdb_bpks bpks ON person.person_id = bpks.person_id
+		LEFT JOIN extension.tbl_tdb_export export ON export.vorgangs_id = konto.buchungsnr
 		WHERE (konto.buchungstyp_kurzbz = '. $LEISTUNGSSTIPENDIUM. ')
 			AND buchungsdatum >= '. $BUCHUNGSDATUM .'
 			AND 0 =
@@ -47,6 +50,7 @@ $filterWidgetArray = array(
 		'Option'
 	),
 	'columnsAliases' => array(
+		'Person-ID',
 		'Vorname',
 		'Nachname',
 		'Buchungsdatum',
@@ -58,7 +62,8 @@ $filterWidgetArray = array(
 		'Zeitpunkt Von',
 		'Zeitpunkt Bis',
 		'TransparentVBK',
-		'StatistikAustriaVBK'
+		'StatistikAustriaVBK',
+		'Übermittlungs-ID'
 	),
 	'formatRow' => function($datasetRaw) {
 
@@ -71,12 +76,16 @@ $filterWidgetArray = array(
 		if ($datasetRaw->{'endjahr'} !== null)
 			$datasetRaw->{'endjahr'} = (string)(int)$datasetRaw->{'endjahr'} - 1;
 
-		if (is_null($datasetRaw->{'TransparentVBK'}) || is_null($datasetRaw->{'StatistikAustriaVBK'}))
+		if (($datasetRaw->{'UebermittlungsId'} === null))
+			$datasetRaw->{'UebermittlungsId'} = '-';
+
+		if (($datasetRaw->{'TransparentVBK'} === null) || ($datasetRaw->{'StatistikAustriaVBK'} === null))
 		{
 			$datasetRaw->{'Option'} = sprintf(
-				'<a href="%s?person_id=%s">Details</a>',
+				'<a href="%s?person_id=%s%s">Details</a>',
 				site_url('extensions/FHC-Core-TDB/TDB/bpkDetails'),
-				$datasetRaw->{'person_id'}
+				$datasetRaw->{'PersonId'},
+				(isset($_GET['exportDate']) ? '&exportDate=' . $_GET['exportDate'] : '')
 			);
 		}
 		else
@@ -89,7 +98,7 @@ $filterWidgetArray = array(
 
 		$mark = '';
 
-		if (is_null($datasetRaw->{'TransparentVBK'}) || is_null($datasetRaw->{'StatistikAustriaVBK'}))
+		if (($datasetRaw->{'TransparentVBK'} === null) || ($datasetRaw->{'StatistikAustriaVBK'} === null))
 		{
 			$mark = "text-danger";
 		}

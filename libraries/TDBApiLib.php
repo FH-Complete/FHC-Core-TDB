@@ -3,9 +3,10 @@
 class TDBApiLib
 {
 
-	private $wsdl = APPPATH."extensions/FHC-Core-TDB/config/WSDLs/tdb/foerderfallLeistungsdaten.wsdl";
 	private $client;
 	private $_ci;
+
+	const WSDL_FULL_NAME = APPPATH.'config/'.ENVIRONMENT.'/extensions/FHC-Core-TDB/WSDLs/tdb/foerderfallLeistungsdaten.wsdl';
 
 	public function __construct()
 	{
@@ -18,7 +19,7 @@ class TDBApiLib
 		$options = $this->getOptions();
 		$header = $this->getHeader();
 
-		$this->client = new SoapClient($this->wsdl, $options);
+		$this->client = new SoapClient(self::WSDL_FULL_NAME, $options);
 		$this->client->__setSoapHeaders($header);
 		$this->client->__setLocation($this->_ci->config->item('endpoint'));
 	}

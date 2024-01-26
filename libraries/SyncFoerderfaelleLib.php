@@ -17,8 +17,8 @@ class SyncFoerderfaelleLib
 				'functionIndex' => 3,
 				'lineIndex' => 2,
 				'dbLogType' => 'job', // required
-				'dbExecuteUser' => 'Cronjob system',
-				'requestId' => 'JOB',
+				'dbExecuteUser' => 'Jobs queue system',
+				'requestId' => 'JQW',
 				'requestDataFormatter' => function($data) {
 					return json_encode($data);
 				}
@@ -28,7 +28,7 @@ class SyncFoerderfaelleLib
 
 		$this->_ci->load->model('crm/Konto_model', 'KontoModel');
 		$this->_ci->load->model('extensions/FHC-Core-TDB/TDBExport_model', 'TDBExportModel');
-		$this->_ci->load->library('extensions/FHC-Core-TDB/TDBManagementLib');
+		$this->_ci->load->library('extensions/FHC-Core-TDB/DataManagementLib');
 	}
 
 	public function newFoerderfaelle($persons)
@@ -36,7 +36,7 @@ class SyncFoerderfaelleLib
 		if (isEmptyArray($persons)) return success('No foerderfaell to be created');
 
 		// Retrieves all users data
-		$personsAllData = $this->_ci->tdbmanagementlib->getAllPersonsData($persons);
+		$personsAllData = $this->_ci->datamanagementlib->getAllPersonsData($persons);
 
 		if (isError($personsAllData)) return $personsAllData;
 		if (!hasData($personsAllData)) return error('No data available for the given persons');

@@ -6,44 +6,43 @@ $(document).ready(function() {
 	var personid = $("#hiddenpersonid").val();
 
 
-	$('#speichern').click(function()
+	$('#suchen').click(function()
 	{
-		var bpkZP = $('#bpkZP').val();
-		var bpkAS = $('#bpkAS').val();
+		var suchParams = {};
 
-		if (bpkZP === '' || bpkAS === '')
-			return FHC_DialogLib.alertWarning('Bitte alle Felder ausfüllen!');
+		if ($('#vorname').val() === '' || $('#nachname').val() === '')
+			return FHC_DialogLib.alertWarning('Bitte Vorname und Nachname ausfüllen!');
 
-		var data = {
-			'bpkZP' : bpkZP,
-			'bpkAS' : bpkAS,
-			'person_id' : personid
-		}
+		$('.needed').each(function() {
+			if ($(this).val() !== '')
+			{
+				suchParams[$(this).attr('id')] = $(this).val();
+			}
+		});
 
-		BPKDetails.saveBPKs(data);
+		if (Object.keys(suchParams).length < 3)
+			return FHC_DialogLib.alertWarning('Bitte mindestens 3 Felder ausfüllen!');
+
+		suchParams['person_id'] = personid;
+
+		BPKDetails.searchBPKs(suchParams);
 	});
 });
 
 var BPKDetails = {
 
-	saveBPKs: function(data)
+	searchBPKs: function(data)
 	{
 		FHC_AjaxClient.ajaxCallPost(
-			CALLED_PATH + '/saveBPKs',
+			CALLED_PATH + '/searchBPKs',
 			data,
 			{
 				successCallback: function(data, textStatus, jqXHR) {
 					if (FHC_AjaxClient.isSuccess(data))
-					{
-						FHC_DialogLib.alertSuccess(FHC_AjaxClient.getData(data))
-
-						$('#bpkZP').prop('disabled', true);
-						$('#bpkAS').prop('disabled', true);
-						$('#speichern').prop('disabled', true);
-					}
+						FHC_DialogLib.alertSuccess(FHC_AjaxClient.getData(data));
 
 					if (FHC_AjaxClient.isError(data))
-						FHC_DialogLib.alertError(FHC_AjaxClient.getError(data))
+						FHC_DialogLib.alertError(FHC_AjaxClient.getError(data));
 
 				},
 				errorCallback: function(jqXHR, textStatus, errorThrown) {

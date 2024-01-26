@@ -67,7 +67,7 @@ $this->load->view(
 				<div class="form-group col-lg-6">
 					<label for="exportDate" class="col-lg-2 col-form-label">Test-Upload</label>
 					<div class="col-lg-4">
-						<select id="bpkExportTest">
+						<select id="test">
 							<option value="false">Nein</option>
 							<option value="true">Ja</option>
 						</select>

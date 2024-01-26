@@ -41,3 +41,14 @@ function mergeUsersPersonIdArray($jobs, $jobsAmount = 99999)
 	return $mergedUsersArray;
 }
 
+function getBPKFromResponse($fremdBPKs)
+{
+	$zp_td_key = array_search('urn:publicid:gv.at:ecdid+BMF+ZP-TD', array_column($fremdBPKs, 'BereichsKennung'));
+	$sta_as_key = array_search('urn:publicid:gv.at:ecdid+BBA-STA+AS', array_column($fremdBPKs, 'BereichsKennung'));
+	
+	if ($zp_td_key === false || $sta_as_key === false)
+		return false;
+
+	return ['vbpk_zp_td' => $zp_td_key, 'vbpk_as' => $sta_as_key];
+}
+

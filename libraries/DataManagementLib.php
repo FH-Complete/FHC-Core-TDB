@@ -1,6 +1,6 @@
 <?php
 
-class TDBManagementLib
+class DataManagementLib
 {
 
 	private $_ci;
@@ -124,8 +124,8 @@ class TDBManagementLib
 										tbl_adresse.*, bpks.*,
 										tbl_person.person_id as person_id');
 		$buchungstypen = implode("','", ($this->_ci->config->item('buchungstyp')));
-		return $this->_ci->KontoModel->loadWhere(
-			"(tbl_konto.buchungstyp_kurzbz IN ('".$buchungstypen."'))
+
+		$where = "(tbl_konto.buchungstyp_kurzbz IN ('".$buchungstypen."'))
 			AND tbl_adresse.zustelladresse = true
 			AND tbl_konto.buchungsdatum >= " . $this->_ci->KontoModel->escape($exportDate). "
 			AND 0 = (
@@ -133,8 +133,44 @@ class TDBManagementLib
 				FROM public.tbl_konto skonto
 				WHERE skonto.buchungsnr = tbl_konto.buchungsnr_verweis
 					OR skonto.buchungsnr_verweis = tbl_konto.buchungsnr_verweis
-			)"
-		);
+			)";
+		return $this->_ci->KontoModel->loadWhere($where);
+	}
+	
+	public function insertNewBPKs($newBPKs, $person_id, $bpkResult)
+	{
+		$existsBPKs = $this->_ci->TDBBPKSModel->loadWhere(array('person_id' => $person_id));
+		
+		if (isError($existsBPKs)) return $existsBPKs;
+		
+		if (hasData($existsBPKs))
+		{
+			$existsBPKsData = getData($existsBPKs)[0];
+			
+			if (!isEmptyString($existsBPKsData->vbpk_zp_td) || !isEmptyString($existsBPKsData->vbpk_as))
+			{
+				$this->_ci->LogLibTDB->logWarningDB("BPKs already exists person_id: " . $person_id);
+			}
+			else
+			{
+				return $this->_ci->TDBBPKSModel->update(
+					array('person_id' => $person_id),
+					array('vbpk_zp_td' => $bpkResult->FremdBPK[$newBPKs['vbpk_zp_td']]->FremdBPK,
+						'vbpk_as' => $bpkResult->FremdBPK[$newBPKs['vbpk_as']]->FremdBPK));
+				
+			}
+		}
+		else
+		{
+			return $this->_ci->TDBBPKSModel->insert(
+				array('person_id' => $person_id,
+					'vbpk_zp_td' => $bpkResult->FremdBPK[$newBPKs['vbpk_zp_td']]->FremdBPK,
+					'vbpk_as' => $bpkResult->FremdBPK[$newBPKs['vbpk_as']]->FremdBPK
+				)
+			);
+			
+		}
+		
 	}
 
 }

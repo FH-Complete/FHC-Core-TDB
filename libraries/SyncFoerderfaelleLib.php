@@ -36,7 +36,7 @@ class SyncFoerderfaelleLib
 		if (isEmptyArray($persons)) return success('No foerderfaell to be created');
 
 		// Retrieves all users data
-		$personsAllData = $this->_ci->datamanagementlib->getAllPersonsData($persons);
+		$personsAllData = $this->_ci->datamanagementlib->getPersonDataForFoerderfall($persons);
 
 		if (isError($personsAllData)) return $personsAllData;
 		if (!hasData($personsAllData)) return error('No data available for the given persons');

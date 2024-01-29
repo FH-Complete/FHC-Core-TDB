@@ -17,7 +17,7 @@ $query = 'SELECT
 			CONCAT(20, SPLIT_PART(sj.studienjahr_kurzbz, \'/\', 2 )) AS endjahr,
 			bpks.vbpk_zp_td AS "TransparentVBK",
 			bpks.vbpk_as AS "StatistikAustriaVBK",
-			export.uebermittlung_id AS "UebermittlungsId"
+			export.uebermittlung_id AS "Uebermittelt"
 		FROM public.tbl_konto konto
 		JOIN public.tbl_person person USING (person_id)
 		JOIN public.tbl_studiensemester ss ON konto.studiensemester_kurzbz = ss.studiensemester_kurzbz 
@@ -63,7 +63,7 @@ $filterWidgetArray = array(
 		'Zeitpunkt Bis',
 		'TransparentVBK',
 		'StatistikAustriaVBK',
-		'Übermittlungs-ID'
+		'Übermittelt'
 	),
 	'formatRow' => function($datasetRaw) {
 
@@ -76,8 +76,10 @@ $filterWidgetArray = array(
 		if ($datasetRaw->{'endjahr'} !== null)
 			$datasetRaw->{'endjahr'} = (string)(int)$datasetRaw->{'endjahr'} - 1;
 
-		if (($datasetRaw->{'UebermittlungsId'} === null))
-			$datasetRaw->{'UebermittlungsId'} = '-';
+		if (($datasetRaw->{'Uebermittelt'} === null))
+			$datasetRaw->{'Uebermittelt'} = 'Nein';
+		else
+			$datasetRaw->{'Uebermittelt'} = 'Ja';
 
 		if (($datasetRaw->{'TransparentVBK'} === null) || ($datasetRaw->{'StatistikAustriaVBK'} === null))
 		{

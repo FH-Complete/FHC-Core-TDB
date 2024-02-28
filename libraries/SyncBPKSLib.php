@@ -41,7 +41,7 @@ class SyncBPKSLib
 		if (isEmptyArray($persons)) return success('No BPKs needed');
 
 		// Retrieves all users data
-		$personsAllData = $this->_ci->datamanagementlib->getAllPersonsData($persons);
+		$personsAllData = $this->_ci->datamanagementlib->getPersonsDataForBPK($persons);
 
 		if (isError($personsAllData)) return $personsAllData;
 		if (!hasData($personsAllData)) return error('No data available for the given persons');

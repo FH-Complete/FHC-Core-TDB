@@ -15,7 +15,7 @@ class DataManagementLib
 		$this->_ci->load->config('extensions/FHC-Core-TDB/tdb');
 	}
 
-	public function getAllPersonsData($persons)
+	public function getPersonsDataForBPK($persons)
 	{
 		$personsALlData = [];
 
@@ -55,8 +55,37 @@ class DataManagementLib
 			if (hasData($addressResult))
 			{
 				$personAllData->plz = getData($addressResult)[0]->plz;
-				$personAllData->staatsangehoerigkeit = getData($addressResult)[0]->staatsangehoerigkeit;
+				$personAllData->staatsbuerger = getData($addressResult)[0]->staatsangehoerigkeit;
 			}
+			
+			$personsALlData[] = $personAllData;
+		}
+		return success($personsALlData);
+	}
+
+	public function getPersonDataForFoerderfall($persons)
+	{
+		$personsALlData = [];
+
+		$dbModel = new DB_Model();
+
+		$dbPersonData = $dbModel->execReadOnlyQuery('
+			SELECT DISTINCT p.person_id,
+				p.nachname AS nachname,
+				p.vorname AS vorname,
+				p.gebdatum AS gebdatum,
+				p.gebort AS gebort
+			  FROM public.tbl_person p
+			 WHERE p.person_id IN ?
+			', [$persons]
+		);
+
+		if (isError($dbPersonData)) return $dbPersonData;
+		if (!hasData($dbPersonData)) return error('The provided person ids are not present in database');
+
+		foreach (getData($dbPersonData) as $person)
+		{
+			$personAllData = $person;
 
 			$this->_ci->load->model('person/Konto_model', 'KontoModel');
 			$this->_ci->KontoModel->addJoin('public.tbl_studiensemester ss', 'tbl_konto.studiensemester_kurzbz = ss.studiensemester_kurzbz');
@@ -98,6 +127,8 @@ class DataManagementLib
 				$personAllData->vbpk_zp_td = getData($bpkResult)[0]->vbpk_zp_td;
 				$personAllData->vbpk_as = getData($bpkResult)[0]->vbpk_as;
 			}
+			else
+				continue;
 
 			$personsALlData[] = $personAllData;
 		}

@@ -28,7 +28,8 @@ class SZRApiLib
 		return array(
 			'keep_alive' => true,
 			'trace' => true,
-			'local_cert' => $this->_ci->config->item('cert')
+			'local_cert' => $this->_ci->config->item('cert'),
+			'passphrase' => $this->_ci->config->item('passphrase')
 		);
 	}
 

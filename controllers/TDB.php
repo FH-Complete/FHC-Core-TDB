@@ -262,6 +262,12 @@ class TDB extends Auth_Controller
 			{
 				$this->terminateWithJsonError('Fehler beim holen der BPKs');
 			}
+			else if (isset($bpkResult->faultstring))
+			{
+				$this->terminateWithJsonError($bpkResult->faultstring);
+			}
+			else
+				$this->terminateWithJsonError('Fehler beim holen der BPKs - kein Faultstring');
 		}
 
 		$newBPKs = getBPKFromResponse($bpkResult->FremdBPK);

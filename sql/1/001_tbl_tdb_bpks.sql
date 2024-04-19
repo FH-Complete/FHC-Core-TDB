@@ -11,4 +11,12 @@ DO $$
     EXCEPTION WHEN OTHERS THEN NULL;
 END $$;
 
+
+
+DO $$
+    BEGIN
+        ALTER TABLE extension.tbl_tdb_bpks ADD CONSTRAINT pk_tbl_tdb_bpks PRIMARY KEY (person_id);
+    EXCEPTION WHEN OTHERS THEN NULL;
+END $$;
+
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE extension.tbl_tdb_bpks TO vilesci;

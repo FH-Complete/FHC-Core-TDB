@@ -30,7 +30,7 @@ $this->load->view(
 				<div class="row">
 					<div class="col-lg-12">
 						<h3 class="page-header">
-							<?php echo  ucfirst($this->p->t('person', 'bpk')) . ' ' . ucfirst($this->p->t('ui', 'suchen')); ?>
+							<?php echo  ucfirst($this->p->t('person', 'bpk')) . ' ' . ucfirst($this->p->t('ui', 'suche')); ?>
 						</h3>
 					</div>
 				</div>
@@ -50,7 +50,7 @@ $this->load->view(
 						<select id="geschlecht" class="form-control needed">
 							<option value="male" <?php echo ($person->geschlecht === 'm' ? 'selected' : '')?>><?php echo  ucfirst($this->p->t('person', 'maennlich')) ?></option>
 							<option value="female" <?php echo ($person->geschlecht === 'w' ? 'selected' : '')?>><?php echo  ucfirst($this->p->t('person', 'weiblich')) ?></option>
-							<option value=""><?php echo ucfirst($this->p->t('person', '')) ?></option>
+							<option value=""><?php echo '-' ?></option>
 						</select>
 					</div>
 
@@ -90,7 +90,7 @@ $this->load->view(
 				
 				<div class="form-group row">
 					<div class="col-sm-2 text-center">
-						<label for="suchen"><?php echo $this->p->t('ui', 'suchen'); ?></label>
+						<label for="suchen"><?php echo $this->p->t('ui', 'suche'); ?></label>
 						<button class="btn btn-default form-control" id="suchen">
 							<i class="fa fa-search fa-fw fa-1x" aria-hidden="true"></i>
 						</button>

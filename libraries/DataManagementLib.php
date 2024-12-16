@@ -3,6 +3,8 @@
 class DataManagementLib
 {
 
+	const TDB_BPK = 'vbpkTd';
+	const AS_BPK = 'vbpkAs';
 	private $_ci;
 
 	public function __construct()
@@ -11,7 +13,7 @@ class DataManagementLib
 
 		$this->_ci->load->model('extensions/FHC-Core-TDB/TDBBPKS_model', 'TDBBPKSModel');
 		$this->_ci->load->model('crm/Konto_model', 'KontoModel');
-
+		$this->_ci->load->model('person/Kennzeichen_model', 'KennzeichenModel');
 		$this->_ci->load->config('extensions/FHC-Core-TDB/tdb');
 	}
 
@@ -119,23 +121,46 @@ class DataManagementLib
 				$personAllData->endjahr = (string)((int)getData($kontoResult)[0]->endjahr - 1);
 			}
 
-			$bpkResult = $this->_ci->TDBBPKSModel->loadWhere(['person_id' => $personAllData->person_id]);
-
-			if (isError($bpkResult)) return $bpkResult;
-			if (hasData($bpkResult))
+			if ($this->_ci->config->item('szr_enabled'))
 			{
-				$personAllData->vbpk_zp_td = getData($bpkResult)[0]->vbpk_zp_td;
-				$personAllData->vbpk_as = getData($bpkResult)[0]->vbpk_as;
+				$bpkResult = $this->_ci->TDBBPKSModel->loadWhere(['person_id' => $personAllData->person_id]);
+
+				if (isError($bpkResult)) return $bpkResult;
+				if (hasData($bpkResult))
+				{
+					$personAllData->vbpk_zp_td = getData($bpkResult)[0]->vbpk_zp_td;
+					$personAllData->vbpk_as = getData($bpkResult)[0]->vbpk_as;
+				}
+				else
+					continue;
 			}
 			else
-				continue;
+			{
+				$tdb_bpk = $this->_ci->KennzeichenModel->loadWhere(
+					array('person_id' => $personAllData->person_id, 'kennzeichentyp_kurzbz' => self::TDB_BPK, 'aktiv' => true)
+				);
+
+				if (isError($tdb_bpk)) return $tdb_bpk;
+				if (!hasData($tdb_bpk)) continue;
+				$personAllData->vbpk_zp_td = getData($tdb_bpk)[0]->inhalt;
+
+
+				$as_bpk = $this->_ci->KennzeichenModel->loadWhere(
+					array('person_id' => $personAllData->person_id, 'kennzeichentyp_kurzbz' => self::AS_BPK, 'aktiv' => true)
+				);
+
+				if (isError($as_bpk)) return $as_bpk;
+				if (!hasData($as_bpk)) continue;
+
+				$personAllData->vbpk_as = getData($as_bpk)[0]->inhalt;
+			}
 
 			$personsALlData[] = $personAllData;
 		}
 		return success($personsALlData);
 	}
 
-	public function getForderfaelleData($exportDate)
+	/*public function getForderfaelleData($exportDate)
 	{
 		$this->_ci->KontoModel->addJoin('public.tbl_person', 'person_id');
 		$this->_ci->KontoModel->addJoin('public.tbl_adresse', 'person_id');
@@ -166,7 +191,7 @@ class DataManagementLib
 					OR skonto.buchungsnr_verweis = tbl_konto.buchungsnr_verweis
 			)";
 		return $this->_ci->KontoModel->loadWhere($where);
-	}
+	}*/
 	
 	public function insertNewBPKs($newBPKs, $person_id, $bpkResult)
 	{

@@ -1,0 +1,6 @@
+/config/WSDLs/*
+/config/szr.php
+/config/tdb.php
+
+/.idea
+

@@ -15,9 +15,9 @@ class TDB extends Auth_Controller
 	{
 		parent::__construct(array(
 				'index'=>'admin:rw',
-				'xmlExport' => 'admin:rw',
+				/*'xmlExport' => 'admin:rw',
 				'csvExport' => 'admin:rw',
-				'csvImport' => 'admin:rw',
+				'csvImport' => 'admin:rw',*/
 				'bpkDetails' => 'admin:rw',
 				'searchBPKs' => 'admin:rw'
 			)
@@ -73,7 +73,7 @@ class TDB extends Auth_Controller
 		$this->_ci->load->view('extensions/FHC-Core-TDB/bpkExport', $data);
 	}
 
-	public function xmlExport()
+	/*public function xmlExport()
 	{
 		$exportDate = $this->_ci->input->get('exportDate');
 		$test_export = $this->_ci->input->get('test') === 'true';
@@ -130,9 +130,9 @@ class TDB extends Auth_Controller
 			->set_content_type('text/xml')
 			->set_header('Content-Disposition: attachment; filename="Export_' . $exportDate . '.xml"')
 			->set_output($xml_content);
-	}
+	}*/
 
-	public function csvExport()
+	/*public function csvExport()
 	{
 		$exportDate = $this->_ci->input->get('csvExportDate');
 
@@ -173,9 +173,9 @@ class TDB extends Auth_Controller
 		}
 		fclose($file);
 		return $file;
-	}
+	}*/
 
-	public function csvImport()
+	/*public function csvImport()
 	{
 		if (is_uploaded_file($_FILES['csvFile']['tmp_name']))
 		{
@@ -209,7 +209,7 @@ class TDB extends Auth_Controller
 			else
 				$this->outputJsonSuccess('Erfolgreich hochgeladen');
 		}
-	}
+	}*/
 
 	public function searchBPKs()
 	{

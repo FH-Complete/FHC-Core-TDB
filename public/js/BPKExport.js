@@ -4,7 +4,7 @@ const CONTROLLER_URL = BASE_URL + "/"+CALLED_PATH;
 
 $(document).ready(function() {
 
-	$('#bpkExport').click(function()
+	/*$('#bpkExport').click(function()
 	{
 		var exportData = $('#exportDate').val();
 		var test = $('#test').val();
@@ -15,9 +15,9 @@ $(document).ready(function() {
 		}
 
 		window.location = (CONTROLLER_URL + '/xmlExport?exportDate='+encodeURIComponent(exportData)+'&test='+encodeURIComponent(test));
-	});
+	});*/
 
-	$('#csvExport').click(function()
+	/*$('#csvExport').click(function()
 	{
 		if ($('#exportDate').val() === '')
 		{
@@ -25,9 +25,9 @@ $(document).ready(function() {
 			return false;
 		}
 		window.open(CONTROLLER_URL + '/csvExport?csvExportDate=' + $('#csvExportDate').val());
-	});
+	});*/
 
-	$('#importCSV').submit(function(e)
+	/*$('#importCSV').submit(function(e)
 	{
 		e.preventDefault();
 
@@ -55,7 +55,7 @@ $(document).ready(function() {
 				}
 			}
 		);
-	});
+	});*/
 
 	$("#datasetActionsTop").append(
 		"<div class='row'>"+

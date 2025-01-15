@@ -28,18 +28,21 @@ $this->load->view(
 	<div id="page-wrapper">
 		<div class="container-fluid">
 			<div class="row">
-				<div class="col-lg-6">
+				<h3 class="page-header">
+					TDB
+				</h3>
+				<!--<div class="col-lg-6">
 					<h3 class="page-header">
 						TDB XML-Export
 						<?php /*echo $this->p->t('core', 'xmlexport') */?>
 					</h3>
-				</div>
-				<div class="col-lg-6">
+				</div>-->
+				<!--<div class="col-lg-6">
 					<h3 class="page-header">
 						<?php /*echo $this->p->t('core', 'CSVexport') */?>
 						bPK CSV-Export/Import
 					</h3>
-				</div>
+				</div>-->
 			</div>
 			<div class="row">
 				<div class="form-group col-lg-6">
@@ -53,17 +56,17 @@ $this->load->view(
 						</div>
 					</form>
 				</div>
-				<div class="form-group col-lg-6">
+				<!--<div class="form-group col-lg-6">
 					<label for="csvExportDate" class="col-lg-2 col-form-label">Buchungsdatum</label>
 					<div class="col-lg-4">
-						<input class="form-control datepicker" type="date" id="csvExportDate" name="csvExportDate" value="<?php echo $csvExportDate; ?>"/>
+						<input class="form-control datepicker" type="date" id="csvExportDate" name="csvExportDate" value="<?php /*echo $csvExportDate; */?>"/>
 					</div>
 					<div class="col-lg-4">
 						<button id="csvExport" type="button" class="btn btn-default">Export</button>
 					</div>
-				</div>
+				</div>-->
 			</div>
-			<div class="row">
+			<!--<div class="row">
 				<div class="form-group col-lg-6">
 					<label for="exportDate" class="col-lg-2 col-form-label">Test-Upload</label>
 					<div class="col-lg-4">
@@ -80,13 +83,13 @@ $this->load->view(
 					<form id="importCSV" method="POST" enctype="multipart/form-data">
 						<div class="col-lg-6">
 							<div class="form-control">
-								<?php echo form_upload(array(
+								<?php /*echo form_upload(array(
 									'name' => 'uploadfile',
 									'accept' => '.csv',
 									'size' => '1',
 									'required' => 'required',
 									'enctype' => "multipart/form-data"
-								)); ?>
+								)); */?>
 							</div>
 							<a class="pull-right" id="csvFile"></a>
 						</div>
@@ -96,7 +99,7 @@ $this->load->view(
 					</form>
 
 				</div>
-			</div>
+			</div>-->
 			<div class="row col-lg-12">
 				<?php $this->load->view('extensions/FHC-Core-TDB/bpkExportData.php'); ?>
 			</div>
